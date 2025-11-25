@@ -119,6 +119,7 @@ class GPT(nn.Module):
         self.transformer = nn.ModuleDict(dict(
             wte = nn.Embedding(config.vocab_size, config.n_embd),
             wpe = nn.Embedding(config.block_size, config.n_embd),
+            drop = nn.Dropout(config.dropout),
             h = nn.ModuleList([Block(config) for _ in range(config.n_layer)]),
             ln_f = LayerNorm(config.n_embd, bias=config.bias),
         ))
@@ -161,7 +162,7 @@ class GPT(nn.Module):
             loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1), ignore_index=-1)
 
         else:
-            logits = self.lm_head(X[..., -1, :]) # get the last token's logits
+            logits = self.lm_head(x[..., -1, :]) # get the last token's logits
             loss = None
         return logits, loss
 
@@ -222,7 +223,7 @@ class GPT(nn.Module):
         return model
 
     # configure the optimizer
-    def configure_optimizers(self, weight_decay, learning_rate, device_type):
+    def configure_optimizers(self, weight_decay, learning_rate, betas ,device_type):
         param_dict = {pn: p for pn, p in self.named_parameters()}
         param_dict = {pn: p for pn, p in param_dict.items() if p.requires_grad}
         decay_params = [p for p in param_dict.values() if p.dim() >= 2]
@@ -238,7 +239,7 @@ class GPT(nn.Module):
         fused_available = 'fused' in inspect.signature(torch.optim.AdamW).parameters
         use_fused = fused_available and device_type == "cuda"
         extra_args = dict(fused=use_fused) if use_fused else dict()
-        optimizer = torch.optim.AdamW(optim_groups, lr=learning_rate, **extra_args)
+        optimizer = torch.optim.AdamW(optim_groups, lr=learning_rate, betas=betas, **extra_args)
         print(f"using fused AdamW: {use_fused}")
         return optimizer
 
