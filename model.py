@@ -263,7 +263,7 @@ class GPT(nn.Module):
         for _ in range(max_new_tokens):
             idx_cond = idx if idx.size(1) <= self.config.block_size else idx[:, -self.config.block_size:]
             logits, _ = self(idx_cond)
-            logits = logits[..., -1, :] / temperature
+            logits = logits / temperature
             if top_k is not None:
                 v, _ = torch.topk(logits, min(top_k, logits.size(-1)))
                 logits[logits < v[..., -1]] = -float('Inf')
