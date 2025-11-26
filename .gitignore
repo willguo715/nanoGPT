@@ -8,3 +8,6 @@ venv/
 ENV/
 .venv
 out/
+out-*/
+*.ckpt.pt
+*.pt
