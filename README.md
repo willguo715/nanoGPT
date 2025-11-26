@@ -28,11 +28,23 @@
 pip install -r requirements.txt
 ```
 
-3. 准备数据集（以 Shakespeare 数据集为例）：
+3. 准备数据集：
+
+**Shakespeare 数据集：**
 ```bash
 cd data/shakespeare_char
 python prepare.py
+cd ../..
 ```
+
+**中文四大名著数据集：**
+```bash
+cd data/chinese
+python prepare.py
+cd ../..
+```
+
+注意：中文数据集需要确保 `data/chinese/` 目录下包含四大名著的文本文件。
 
 ## 使用方法
 
@@ -129,15 +141,147 @@ nanoGPT/
 ├── train.py              # 训练脚本
 ├── model.py              # GPT 模型定义
 ├── configurator.py       # 配置解析器
+├── sample.py             # Shakespeare 文本生成脚本
+├── sample_chinese.py     # 中文文本生成脚本
 ├── requirements.txt      # 依赖列表
 ├── config/               # 配置文件目录
-│   └── train_shakespeare_char.py
+│   ├── train_shakespeare_char.py  # Shakespeare 训练配置
+│   └── train_chinese.py           # 中文四大名著训练配置
 ├── data/                 # 数据集目录
-│   └── shakespeare_char/
-│       ├── prepare.py    # 数据预处理脚本
+│   ├── shakespeare_char/
+│   │   ├── prepare.py    # 数据预处理脚本
+│   │   ├── train.bin    # 训练数据
+│   │   └── val.bin      # 验证数据
+│   └── chinese/
+│       ├── prepare.py    # 中文数据预处理脚本
+│       ├── hongloumeng.txt    # 红楼梦
+│       ├── sanguoyanyi.txt    # 三国演义
+│       ├── shuihuzhuan.txt    # 水浒传
+│       ├── xiyouji.txt        # 西游记
 │       ├── train.bin    # 训练数据
 │       └── val.bin      # 验证数据
 └── out/                  # 输出目录（训练检查点）
+    ├── out-shakespeare-char/  # Shakespeare 模型检查点
+    └── out-chinese/           # 中文模型检查点
+```
+
+## 快速开始
+
+### 1. Shakespeare 字符级模型
+
+#### 数据预处理
+```bash
+cd data/shakespeare_char
+python prepare.py
+cd ../..
+```
+
+#### 训练模型
+```bash
+python train.py config/train_shakespeare_char.py
+```
+
+训练完成后，检查点会保存在 `out-shakespeare-char/ckpt.pt`。
+
+#### 生成文本
+```bash
+# 方式1：通过命令行参数指定 out_dir
+python sample.py --out_dir=out-shakespeare-char
+
+# 方式2：修改 sample.py 中的参数
+# 编辑 sample.py，设置：
+# out_dir = 'out-shakespeare-char'
+# 然后运行：
+python sample.py
+```
+
+可以同时使用命令行参数覆盖其他参数：
+```bash
+python sample.py --out_dir=out-shakespeare-char --start="ROMEO:" --num_samples=5 --temperature=0.9
+```
+
+或者修改 `sample.py` 中的参数：
+```python
+init_from = 'resume'
+out_dir = 'out-shakespeare-char'  # 指定检查点目录
+start = '\n'  # 起始提示词
+num_samples = 10  # 生成样本数量
+max_new_tokens = 500  # 最大生成长度
+temperature = 0.8  # 采样温度
+top_k = 200  # Top-k 采样
+```
+
+### 2. 四大名著中文模型
+
+#### 数据预处理
+首先确保 `data/chinese/` 目录下有以下文件：
+- `hongloumeng.txt` (红楼梦)
+- `sanguoyanyi.txt` (三国演义)
+- `shuihuzhuan.txt` (水浒传)
+- `xiyouji.txt` (西游记)
+
+然后运行预处理脚本：
+```bash
+cd data/chinese
+python prepare.py
+cd ../..
+```
+
+这会生成：
+- `train.bin` - 训练数据
+- `val.bin` - 验证数据
+- `meta.pkl` - 字符编码映射
+
+#### 训练模型
+```bash
+python train.py config/train_chinese.py
+```
+
+训练配置（针对 RTX 3060 优化）：
+- `batch_size = 32` - 充分利用 12GB 显存
+- `block_size = 512` - 适合中文文本的上下文长度
+- `n_layer = 12, n_head = 12, n_embd = 768` - 中等规模模型
+- `max_iters = 5000` - 训练步数（可根据需要调整）
+
+训练完成后，检查点会保存在 `out-chinese/ckpt.pt`。
+
+#### 生成文本
+```bash
+# 方式1：通过命令行参数指定 out_dir
+python sample_chinese.py --out_dir=out-chinese
+
+# 方式2：修改 sample_chinese.py 中的参数
+# 编辑 sample_chinese.py，设置：
+# out_dir = 'out-chinese'
+# 然后运行：
+python sample_chinese.py
+```
+
+可以同时使用命令行参数覆盖其他参数：
+```bash
+python sample_chinese.py --out_dir=out-chinese --start="话说" --num_samples=3 --temperature=0.7
+```
+
+或者修改 `sample_chinese.py` 中的参数：
+```python
+init_from = 'resume'
+out_dir = 'out-chinese'  # 指定检查点目录
+start = '\n'  # 起始提示词，例如：'话说'、'却说'、'且说' 等
+num_samples = 5  # 生成样本数量
+max_new_tokens = 500  # 最大生成长度
+temperature = 0.8  # 采样温度（越低越确定）
+top_k = 200  # Top-k 采样
+```
+
+### 3. 从检查点恢复训练
+
+如果训练中断，可以从检查点恢复：
+```bash
+# 修改配置文件中的 init_from
+# init_from = 'resume'  # 改为 'resume'
+
+# 然后重新运行训练
+python train.py config/train_chinese.py
 ```
 
 ## 示例

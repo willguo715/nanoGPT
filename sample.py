@@ -19,6 +19,7 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 dtype = 'bfloat16' if torch.cuda.is_available() and torch.cuda.get_device_capability()[0] >= 8 else 'float32'
 compile = False
 exec(open('configurator.py').read())
+print(f"device: {device}")
 
 torch.manual_seed(seed)
 torch.cuda.manual_seed(seed)
