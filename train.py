@@ -33,7 +33,7 @@ dropout = 0.0
 bias = False
 # adamw optimizer
 learning_rate = 6e-4
-max_iters = 600000
+max_iters = 60000
 weight_decay = 1e-1
 beta1 = 0.9
 beta2 = 0.95
